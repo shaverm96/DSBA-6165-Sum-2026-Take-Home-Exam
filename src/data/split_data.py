@@ -20,22 +20,24 @@ class SplitPaths:
 
 
 def collect_image_records(dataset_root: Path, class_names: Sequence[str]) -> pd.DataFrame:
-    """Collect image paths and labels from nested class folders under a dataset root."""
+    """Collect image paths and labels from images nested anywhere under a dataset root."""
     records: List[Dict[str, str]] = []
-    for class_name in class_names:
-        class_dirs = sorted({path for path in dataset_root.rglob(class_name) if path.is_dir()})
-        if not class_dirs:
-            raise FileNotFoundError(f"Missing class directory under {dataset_root}: {class_name}")
+    class_name_set = set(class_names)
 
-        for class_dir in class_dirs:
-            for image_path in sorted(class_dir.iterdir()):
-                if image_path.suffix.lower() in IMAGE_EXTENSIONS and image_path.is_file():
-                    records.append(
-                        {
-                            "image_path": str(image_path.resolve()),
-                            "label": class_name,
-                        }
-                    )
+    for image_path in sorted(dataset_root.rglob("*")):
+        if not image_path.is_file() or image_path.suffix.lower() not in IMAGE_EXTENSIONS:
+            continue
+
+        label = next((part for part in image_path.parts if part in class_name_set), None)
+        if label is None:
+            continue
+
+        records.append(
+            {
+                "image_path": str(image_path.resolve()),
+                "label": label,
+            }
+        )
     if not records:
         raise ValueError(f"No images found under {dataset_root}")
     return pd.DataFrame(records)
