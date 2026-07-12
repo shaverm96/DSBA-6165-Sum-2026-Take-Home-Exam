@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple
 
@@ -207,6 +208,7 @@ def train_classifier(
         model.unfreeze_backbone()
 
     for epoch in range(start_epoch, epochs):
+        epoch_start = time.perf_counter()
         if epoch == freeze_backbone_epochs:
             model.unfreeze_backbone()
             optimizer = torch.optim.AdamW(
@@ -229,9 +231,11 @@ def train_classifier(
         epoch_metrics = {
             "epoch": float(epoch + 1),
             "learning_rate": float(optimizer.param_groups[0]["lr"]),
+            "epoch_seconds": 0.0,
             **{f"train_{key}": value for key, value in train_metrics.items()},
             **{f"validation_{key}": value for key, value in validation_metrics.items()},
         }
+        epoch_metrics["epoch_seconds"] = time.perf_counter() - epoch_start
         history.append(epoch_metrics)
         if validation_metrics["loss"] < best_validation_loss:
             best_validation_loss = validation_metrics["loss"]
@@ -263,8 +267,11 @@ def train_classifier(
         print(
             f"Epoch {epoch + 1:03d}/{epochs:03d} | "
             f"train loss {train_metrics['loss']:.4f} | "
+            f"train accuracy {train_metrics['accuracy']:.4f} | "
             f"validation loss {validation_metrics['loss']:.4f} | "
-            f"validation F1 {validation_metrics['f1']:.4f}"
+            f"validation accuracy {validation_metrics['accuracy']:.4f} | "
+            f"validation F1 {validation_metrics['f1']:.4f} | "
+            f"time {epoch_metrics['epoch_seconds']:.1f}s"
         )
 
         if epochs_without_improvement >= patience:
