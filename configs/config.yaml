@@ -31,6 +31,7 @@ training:
   image_size: 128
   low_resolution_size: 32
   classifier_epochs: 30
+  classifier_freeze_epochs: 1
   srgan_epochs: 150
   early_stopping_patience: 8
   checkpoint_frequency: 5
