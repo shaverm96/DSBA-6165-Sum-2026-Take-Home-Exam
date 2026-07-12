@@ -1,0 +1,63 @@
+seed: 42
+
+dataset:
+  raw_root: data/dogs-vs-cats-classification
+  classes:
+    - cats
+    - dogs
+  raw_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+
+paths:
+  splits_dir: data/splits
+  processed_dir: data/processed
+  low_resolution_dir: data/low_resolution
+  srgan_generated_dir: data/srgan_generated
+  output_dir: outputs
+  model_dir: models/checkpoints
+  logs_dir: logs
+
+split:
+  test_size: 0.30
+  val_size: 0.15
+  random_state: 42
+
+training:
+  seed: 42
+  batch_size: 32
+  num_workers: 4
+  image_size: 128
+  low_resolution_size: 32
+  classifier_epochs: 30
+  srgan_epochs: 150
+  early_stopping_patience: 8
+  checkpoint_frequency: 5
+
+model:
+  classifier:
+    architecture: resnet18
+    pretrained: true
+    num_classes: 1
+    classifier_dropout: 0.2
+    learning_rate: 1e-4
+    weight_decay: 1e-4
+  srgan:
+    generator:
+      num_residual_blocks: 8
+      base_channels: 64
+    discriminator:
+      base_channels: 64
+    loss_weights:
+      pixel: 1.0
+      perceptual: 1.0
+      adversarial: 0.001
+
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc

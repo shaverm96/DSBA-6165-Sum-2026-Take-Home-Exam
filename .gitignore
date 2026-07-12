@@ -1,0 +1,25 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+# Jupyter
+.ipynb_checkpoints/
+# Virtual environments
+.env
+.venv
+venv/
+# Logs and outputs
+logs/
+outputs/
+models/checkpoints/
+models/final/
+*.log
+# Data directories
+data/dogs-vs-cats-classification/
+data/processed/
+data/low_resolution/
+data/srgan_generated/
+# System files
+.DS_Store
+Thumbs.db
