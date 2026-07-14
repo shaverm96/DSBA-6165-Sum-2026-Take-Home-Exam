@@ -10,6 +10,7 @@ pytest.importorskip("torchvision")
 
 from src.models.classifier import ResNet18Classifier
 from src.data.dataset import ImageClassificationDataset
+from src.data.split_data import create_stratified_splits
 from src.training.train_classifier import (
     _binary_metrics,
     build_classification_loaders,
@@ -38,6 +39,23 @@ def test_classification_dataset_skips_invalid_images(tmp_path):
 
     assert len(dataset) == 1
     assert dataset.invalid_image_paths == [str(invalid_image)]
+
+
+def test_stratified_splits_reject_one_class_dataset():
+    records = pd.DataFrame(
+        [
+            {"image_path": f"cat-{index}.jpg", "label": "cats"}
+            for index in range(10)
+        ]
+    )
+
+    with pytest.raises(ValueError, match="At least two classes"):
+        create_stratified_splits(
+            records=records,
+            test_size=0.30,
+            val_size=0.15,
+            random_state=42,
+        )
 
 
 def test_resnet18_classifier_returns_one_logit_per_image():

@@ -19,6 +19,21 @@ class SplitPaths:
     test_csv: Path
 
 
+def _validate_class_coverage(
+    records: pd.DataFrame,
+    class_names: Sequence[str],
+    split_name: str,
+) -> None:
+    """Require every configured class to be represented in a table."""
+    expected_classes = set(class_names)
+    observed_classes = set(records["label"].astype(str))
+    if observed_classes != expected_classes:
+        raise ValueError(
+            f"{split_name} must contain {sorted(expected_classes)}; "
+            f"found {sorted(observed_classes)}"
+        )
+
+
 def collect_image_records(dataset_root: Path, class_names: Sequence[str]) -> pd.DataFrame:
     """Collect image paths and labels from images nested anywhere under a dataset root."""
     records: List[Dict[str, str]] = []
@@ -40,7 +55,9 @@ def collect_image_records(dataset_root: Path, class_names: Sequence[str]) -> pd.
         )
     if not records:
         raise ValueError(f"No images found under {dataset_root}")
-    return pd.DataFrame(records)
+    records_table = pd.DataFrame(records)
+    _validate_class_coverage(records_table, class_names, "Dataset")
+    return records_table
 
 
 def create_stratified_splits(
@@ -54,6 +71,12 @@ def create_stratified_splits(
     The test split is taken from the full dataset. The validation split is then
     carved out of the remaining training portion.
     """
+    class_names = sorted(records["label"].astype(str).unique())
+    if len(class_names) < 2:
+        raise ValueError(
+            f"At least two classes are required for stratified splitting; found {class_names}"
+        )
+
     train_val_records, test_records = train_test_split(
         records,
         test_size=test_size,
@@ -67,11 +90,13 @@ def create_stratified_splits(
         stratify=train_val_records["label"],
         random_state=random_state,
     )
-    return (
-        train_records.reset_index(drop=True),
-        val_records.reset_index(drop=True),
-        test_records.reset_index(drop=True),
-    )
+    train_records = train_records.reset_index(drop=True)
+    val_records = val_records.reset_index(drop=True)
+    test_records = test_records.reset_index(drop=True)
+    _validate_class_coverage(train_records, class_names, "Training split")
+    _validate_class_coverage(val_records, class_names, "Validation split")
+    _validate_class_coverage(test_records, class_names, "Test split")
+    return train_records, val_records, test_records
 
 
 def save_split_csvs(
