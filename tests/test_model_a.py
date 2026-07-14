@@ -1,16 +1,43 @@
 import pytest
 from pathlib import Path
 
+import pandas as pd
+from PIL import Image
+
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("torchvision")
 
 from src.models.classifier import ResNet18Classifier
+from src.data.dataset import ImageClassificationDataset
 from src.training.train_classifier import (
     _binary_metrics,
     build_classification_loaders,
     train_classifier,
 )
+
+
+def test_classification_dataset_skips_invalid_images(tmp_path):
+    valid_image = tmp_path / "valid.jpg"
+    invalid_image = tmp_path / "invalid.jpg"
+    split_csv = tmp_path / "split.csv"
+    Image.new("RGB", (8, 8), color="white").save(valid_image)
+    invalid_image.write_bytes(b"not an image")
+    pd.DataFrame(
+        [
+            {"image_path": valid_image, "label": "cats"},
+            {"image_path": invalid_image, "label": "dogs"},
+        ]
+    ).to_csv(split_csv, index=False)
+
+    dataset = ImageClassificationDataset(
+        split_csv=split_csv,
+        class_names=["cats", "dogs"],
+        validate_images=True,
+    )
+
+    assert len(dataset) == 1
+    assert dataset.invalid_image_paths == [str(invalid_image)]
 
 
 def test_resnet18_classifier_returns_one_logit_per_image():
@@ -70,3 +97,4 @@ def test_classifier_training_writes_resume_checkpoints(tmp_path):
     assert len(history) == 1
     assert (tmp_path / "last.pt").exists()
     assert (tmp_path / "best.pt").exists()
+    assert (tmp_path / "history.json").exists()

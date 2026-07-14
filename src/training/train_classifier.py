@@ -147,6 +147,10 @@ def _save_checkpoint(
         },
         path,
     )
+    (path.parent / "history.json").write_text(
+        json.dumps(history, indent=2),
+        encoding="utf-8",
+    )
 
 
 def train_classifier(

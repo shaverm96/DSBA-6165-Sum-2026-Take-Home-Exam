@@ -5,7 +5,7 @@ from typing import Callable, Optional, Sequence, Tuple
 
 import pandas as pd
 import torch
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -16,6 +16,16 @@ def _load_rgb_image(image_path: Path) -> Image.Image:
         return image.convert("RGB")
 
 
+def _is_valid_image(image_path: Path) -> bool:
+    """Return whether an image can be identified and decoded by Pillow."""
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+        return True
+    except (FileNotFoundError, UnidentifiedImageError, OSError):
+        return False
+
+
 class ImageClassificationDataset(Dataset):
     """Dataset that reads image paths and labels from a split CSV file."""
 
@@ -24,6 +34,7 @@ class ImageClassificationDataset(Dataset):
         split_csv: Path | str,
         class_names: Sequence[str],
         transform: Optional[Callable] = None,
+        validate_images: bool = False,
     ) -> None:
         self.split_csv = Path(split_csv)
         if not self.split_csv.exists():
@@ -36,6 +47,18 @@ class ImageClassificationDataset(Dataset):
             raise ValueError(
                 f"Split file {self.split_csv} is missing columns: {sorted(missing_columns)}"
             )
+
+        self.invalid_image_paths: list[str] = []
+        if validate_images:
+            valid_images = self.records["image_path"].map(
+                lambda image_path: _is_valid_image(Path(image_path))
+            )
+            self.invalid_image_paths = (
+                self.records.loc[~valid_images, "image_path"].astype(str).tolist()
+            )
+            self.records = self.records.loc[valid_images].reset_index(drop=True)
+            if self.records.empty:
+                raise ValueError(f"No valid images found in {self.split_csv}")
 
         self.class_names = list(class_names)
         self.class_to_idx = {class_name: index for index, class_name in enumerate(self.class_names)}
