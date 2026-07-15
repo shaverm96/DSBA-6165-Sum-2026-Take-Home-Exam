@@ -8,6 +8,7 @@ __pycache__/
 # Virtual environments
 .env
 .venv
+.venv-python313/
 venv/
 # Logs and outputs
 logs/
